@@ -128,6 +128,10 @@ type Capabilities struct {
 	CommandLinePlugin CommandLinePlugin
 	// ManagementAPI declares plugin-owned diagnostic Management API and resource routes.
 	ManagementAPI ManagementAPI
+	// PublicAPI declares plugin-owned public API routes under /v1/plugins/<pluginID>/.
+	// Unlike Management API routes they are authenticated with the standard API
+	// access key, so client-facing endpoints such as MCP servers can live there.
+	PublicAPI PublicAPI
 	// QuotaProvider surfaces credential quota and billing information for management clients.
 	QuotaProvider QuotaProvider
 }
@@ -1512,6 +1516,37 @@ type ManagementResponse struct {
 	// On schema_version >= 6, JSON bodies are returned without HTML entity escaping.
 	// On schema_version < 6, JSON response string values are HTML-escaped for legacy compatibility.
 	Body []byte
+}
+
+// PublicAPI lets a plugin expose client-facing HTTP endpoints under
+// /v1/plugins/<pluginID>/. Routes are authenticated with the standard API
+// access key, unlike Management API routes which require the management secret.
+type PublicAPI interface {
+	RegisterPublic(context.Context, PublicRegistrationRequest) (PublicRegistrationResponse, error)
+}
+
+// PublicRegistrationRequest carries host context for public route registration.
+type PublicRegistrationRequest struct {
+	// Plugin is the metadata of the plugin being registered.
+	Plugin Metadata
+	// BasePath is the prefix all public routes are mounted under.
+	BasePath string
+}
+
+// PublicRegistrationResponse lists plugin-owned public routes.
+type PublicRegistrationResponse struct {
+	// Routes contains the exact public routes to expose.
+	Routes []PublicRoute
+}
+
+// PublicRoute describes one plugin-owned public API route.
+type PublicRoute struct {
+	// Method is the HTTP method, for example POST.
+	Method string
+	// Path is an exact path under /v1/plugins/<pluginID>/. Relative paths are resolved under that prefix.
+	Path string
+	// Handler processes matching public API requests.
+	Handler ManagementHandler
 }
 
 // UsageRecord describes request usage and billing metadata.

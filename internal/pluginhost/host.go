@@ -86,6 +86,7 @@ type Host struct {
 	commandLineHits        map[string]struct{}
 	managementRoutes       map[string]managementRouteRecord
 	resourceRoutes         map[string]resourceRouteRecord
+	publicRoutes           map[string]publicRouteRecord
 	streams                *streamBridge
 	httpStreams            *hostHTTPStreamBridge
 	httpOperations         *hostHTTPOperationBridge
@@ -117,6 +118,7 @@ func New() *Host {
 		commandLineHits:        make(map[string]struct{}),
 		managementRoutes:       make(map[string]managementRouteRecord),
 		resourceRoutes:         make(map[string]resourceRouteRecord),
+		publicRoutes:           make(map[string]publicRouteRecord),
 		streams:                newStreamBridge(),
 		httpStreams:            newHostHTTPStreamBridge(),
 		httpOperations:         newHostHTTPOperationBridge(),
@@ -228,6 +230,7 @@ func (h *Host) ApplyConfig(ctx context.Context, cfg *config.Config) {
 		h.mu.Lock()
 		h.managementRoutes = make(map[string]managementRouteRecord)
 		h.resourceRoutes = make(map[string]resourceRouteRecord)
+		h.publicRoutes = make(map[string]publicRouteRecord)
 		h.rebuildActivePluginMapsLocked(nil)
 		h.snapshot.Store(emptySnapshot())
 		h.mu.Unlock()
@@ -242,6 +245,7 @@ func (h *Host) ApplyConfig(ctx context.Context, cfg *config.Config) {
 		h.mu.Lock()
 		h.managementRoutes = make(map[string]managementRouteRecord)
 		h.resourceRoutes = make(map[string]resourceRouteRecord)
+		h.publicRoutes = make(map[string]publicRouteRecord)
 		h.rebuildActivePluginMapsLocked(nil)
 		h.snapshot.Store(emptySnapshot())
 		h.mu.Unlock()
@@ -843,6 +847,7 @@ func (h *Host) ShutdownAllContext(ctx context.Context) {
 	h.commandLineHits = make(map[string]struct{})
 	h.managementRoutes = make(map[string]managementRouteRecord)
 	h.resourceRoutes = make(map[string]resourceRouteRecord)
+	h.publicRoutes = make(map[string]publicRouteRecord)
 	h.pluginFileVersions = make(map[string]string)
 	h.activePluginVersions = make(map[string]string)
 	h.activePluginPaths = make(map[string]string)
@@ -979,6 +984,11 @@ func (h *Host) removePluginRuntimeStateLocked(id string) {
 	for key, record := range h.resourceRoutes {
 		if record.pluginID == id {
 			delete(h.resourceRoutes, key)
+		}
+	}
+	for key, record := range h.publicRoutes {
+		if record.pluginID == id {
+			delete(h.publicRoutes, key)
 		}
 	}
 	for name, record := range h.commandLineFlags {

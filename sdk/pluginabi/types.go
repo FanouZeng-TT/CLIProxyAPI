@@ -87,6 +87,9 @@ const (
 	MethodManagementRegister = "management.register"
 	MethodManagementHandle   = "management.handle"
 
+	MethodPublicRegister = "public.register"
+	MethodPublicHandle   = "public.handle"
+
 	MethodQuotaIdentifier = "quota.identifier"
 	MethodQuotaDescribe   = "quota.describe"
 	MethodQuotaFetch      = "quota.fetch"

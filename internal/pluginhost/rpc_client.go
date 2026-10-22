@@ -166,6 +166,9 @@ func registerRPCPlugin(ctx context.Context, host *Host, id string, client plugin
 	if resp.Capabilities.ManagementAPI {
 		plugin.Capabilities.ManagementAPI = adapter
 	}
+	if resp.Capabilities.PublicAPI {
+		plugin.Capabilities.PublicAPI = adapter
+	}
 	if resp.Capabilities.QuotaProvider {
 		if err := ctx.Err(); err != nil {
 			return pluginapi.Plugin{}, err
@@ -638,6 +641,28 @@ func (a *rpcPluginAdapter) HandleManagement(ctx context.Context, req pluginapi.M
 	callbackID, closeCallback := a.openHostCallbackContext(ctx)
 	defer closeCallback()
 	return callPlugin[pluginapi.ManagementResponse](ctx, a.client, pluginabi.MethodManagementHandle, rpcManagementRequest{
+		ManagementRequest: req,
+		HostCallbackID:    callbackID,
+	})
+}
+
+func (a *rpcPluginAdapter) RegisterPublic(ctx context.Context, req pluginapi.PublicRegistrationRequest) (pluginapi.PublicRegistrationResponse, error) {
+	resp, errCall := callPlugin[rpcPublicRegistrationResponse](ctx, a.client, pluginabi.MethodPublicRegister, req)
+	if errCall != nil {
+		return pluginapi.PublicRegistrationResponse{}, errCall
+	}
+	routes := make([]pluginapi.PublicRoute, 0, len(resp.Routes))
+	for _, route := range resp.Routes {
+		route.Handler = a
+		routes = append(routes, route)
+	}
+	return pluginapi.PublicRegistrationResponse{Routes: routes}, nil
+}
+
+func (a *rpcPluginAdapter) HandlePublic(ctx context.Context, req pluginapi.ManagementRequest) (pluginapi.ManagementResponse, error) {
+	callbackID, closeCallback := a.openHostCallbackContext(ctx)
+	defer closeCallback()
+	return callPlugin[pluginapi.ManagementResponse](ctx, a.client, pluginabi.MethodPublicHandle, rpcManagementRequest{
 		ManagementRequest: req,
 		HostCallbackID:    callbackID,
 	})

@@ -232,6 +232,7 @@ func (s *Server) refreshPluginManagementRoutes() {
 		return
 	}
 	s.pluginHost.RegisterManagementRoutes(context.Background(), s.registeredManagementRouteKeys())
+	s.pluginHost.RegisterPublicRoutes(context.Background())
 }
 
 // RefreshPluginManagementRoutes rebuilds plugin-owned Management API routes.
@@ -264,6 +265,10 @@ func (s *Server) pluginManagementNoRoute(c *gin.Context) {
 		s.pluginResourceNoRoute(c)
 		return
 	}
+	if strings.HasPrefix(path, "/v1/plugins/") {
+		s.pluginPublicNoRoute(c)
+		return
+	}
 	if path != "/v0/management" && !strings.HasPrefix(path, "/v0/management/") {
 		c.AbortWithStatus(http.StatusNotFound)
 		return
@@ -284,6 +289,24 @@ func (s *Server) pluginManagementNoRoute(c *gin.Context) {
 		return
 	}
 	if s.pluginHost.ServeManagementHTTP(c.Writer, c.Request) {
+		c.Abort()
+		return
+	}
+	c.AbortWithStatus(http.StatusNotFound)
+}
+
+// pluginPublicNoRoute serves plugin-owned public API routes under /v1/plugins/
+// with the standard API access key authentication.
+func (s *Server) pluginPublicNoRoute(c *gin.Context) {
+	if s == nil || s.pluginHost == nil {
+		c.AbortWithStatus(http.StatusNotFound)
+		return
+	}
+	accessAuthMiddleware(s.accessManager, false)(c)
+	if c.IsAborted() {
+		return
+	}
+	if s.pluginHost.ServePublicHTTP(c.Writer, c.Request) {
 		c.Abort()
 		return
 	}
