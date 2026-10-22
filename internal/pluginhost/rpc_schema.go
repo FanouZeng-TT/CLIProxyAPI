@@ -54,6 +54,7 @@ type rpcCapabilities struct {
 	UsagePlugin                       bool                         `json:"usage_plugin"`
 	CommandLinePlugin                 bool                         `json:"command_line_plugin"`
 	ManagementAPI                     bool                         `json:"management_api"`
+	PublicAPI                         bool                         `json:"public_api"`
 	QuotaProvider                     bool                         `json:"quota_provider"`
 }
 
@@ -149,6 +150,10 @@ type rpcManagementRequest struct {
 type rpcManagementRegistrationResponse struct {
 	Routes    []pluginapi.ManagementRoute `json:"routes,omitempty"`
 	Resources []pluginapi.ResourceRoute   `json:"resources,omitempty"`
+}
+
+type rpcPublicRegistrationResponse struct {
+	Routes []pluginapi.PublicRoute `json:"routes,omitempty"`
 }
 
 type rpcQuotaFetchRequest struct {
@@ -261,6 +266,7 @@ func rpcCapabilitiesFromPlugin(plugin pluginapi.Plugin) rpcCapabilities {
 		UsagePlugin:                       caps.UsagePlugin != nil,
 		CommandLinePlugin:                 caps.CommandLinePlugin != nil,
 		ManagementAPI:                     caps.ManagementAPI != nil,
+		PublicAPI:                         caps.PublicAPI != nil,
 		QuotaProvider:                     caps.QuotaProvider != nil,
 	}
 }
