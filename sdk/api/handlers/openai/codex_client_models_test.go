@@ -129,6 +129,37 @@ func TestCodexClientModelsResponseClientVersionFiltering(t *testing.T) {
 	}
 }
 
+func TestFilterOpenAIModelsPreservesPresentationMetadata(t *testing.T) {
+	models := filterOpenAIModels([]map[string]any{{
+		"id":           "auto",
+		"object":       "model",
+		"owned_by":     "byteproxy",
+		"display_name": "Auto → GPT-5.6-Sol · TRAE🟢98",
+		"description":        "动态落点",
+		"context_length":     350000,
+		"max_context_length": 350000,
+		"internal":           "hidden",
+	}})
+	if len(models) != 1 {
+		t.Fatalf("models=%v", models)
+	}
+	if got := models[0]["display_name"]; got != "Auto → GPT-5.6-Sol · TRAE🟢98" {
+		t.Fatalf("display_name=%v", got)
+	}
+	if got := models[0]["description"]; got != "动态落点" {
+		t.Fatalf("description=%v", got)
+	}
+	if got := models[0]["context_length"]; got != 350000 {
+		t.Fatalf("context_length=%v", got)
+	}
+	if got := models[0]["max_context_length"]; got != 350000 {
+		t.Fatalf("max_context_length=%v", got)
+	}
+	if _, exists := models[0]["internal"]; exists {
+		t.Fatalf("unexpected internal field: %v", models[0])
+	}
+}
+
 func TestOpenAIModels_DoesNotExposeMetadataModelID(t *testing.T) {
 	clientID := "openai-models-no-metadata-id-test"
 	modelRegistry := registry.GetGlobalRegistry()

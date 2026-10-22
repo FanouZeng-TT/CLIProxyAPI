@@ -81,7 +81,17 @@ func (h *OpenAIAPIHandler) OpenAIModels(c *gin.Context) {
 	// Get all available models
 	allModels := h.Models()
 
-	// Filter to only include the 4 required fields: id, object, created, owned_by
+	// Keep standard OpenAI fields plus optional presentation metadata. Clients that
+	// understand display_name can show dynamic plugin status; strict clients ignore it.
+	filteredModels := filterOpenAIModels(allModels)
+
+	h.WriteModelListResponse(c, h.HandlerType(), gin.H{
+		"object": "list",
+		"data":   filteredModels,
+	})
+}
+
+func filterOpenAIModels(allModels []map[string]any) []map[string]any {
 	filteredModels := make([]map[string]any, len(allModels))
 	for i, model := range allModels {
 		filteredModel := map[string]any{
@@ -99,13 +109,24 @@ func (h *OpenAIAPIHandler) OpenAIModels(c *gin.Context) {
 			filteredModel["owned_by"] = ownedBy
 		}
 
+		// Preserve optional presentation metadata for model pickers.
+		if displayName, exists := model["display_name"]; exists {
+			filteredModel["display_name"] = displayName
+		}
+		if description, exists := model["description"]; exists {
+			filteredModel["description"] = description
+		}
+		// Preserve model capability metadata used by dynamic-discovery clients.
+		for _, field := range []string{"context_length", "max_context_length"} {
+			if value, exists := model[field]; exists {
+				filteredModel[field] = value
+			}
+		}
+
 		filteredModels[i] = filteredModel
 	}
 
-	h.WriteModelListResponse(c, h.HandlerType(), gin.H{
-		"object": "list",
-		"data":   filteredModels,
-	})
+	return filteredModels
 }
 
 // ChatCompletions handles the /v1/chat/completions endpoint.
