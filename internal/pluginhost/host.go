@@ -78,6 +78,8 @@ type Host struct {
 	modelClientIDs           map[string]struct{} // Reserved for future use; catalog-only plugins do not populate it.
 	executorModelClientIDs   map[string]struct{}
 	modelProviders           map[string]string
+	modelCatalogRefresh      func(context.Context, string) (string, error)
+	modelCatalogRevisions    map[string]string
 	modelProviderSets        map[string][]string
 	authCredentialProviders  map[string]map[string]string
 	modelRegistrations       map[string]pluginModelRegistration

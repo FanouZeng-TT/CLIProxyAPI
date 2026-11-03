@@ -2,6 +2,7 @@ package cliproxy
 
 import (
 	"context"
+	"fmt"
 	"strings"
 	"sync"
 	"time"
@@ -138,15 +139,42 @@ func (s *Service) syncPluginRuntimeConfigForConfig(ctx context.Context, cfg *con
 }
 
 func (s *Service) syncPluginModelRuntime(ctx context.Context) {
+	_ = s.refreshPluginModelRuntime(ctx)
+}
+
+func (s *Service) refreshPluginModelRuntime(ctx context.Context) error {
+	if s == nil {
+		return fmt.Errorf("plugin model runtime is unavailable")
+	}
+	s.pluginModelSyncMu.Lock()
+	defer s.pluginModelSyncMu.Unlock()
+	return s.refreshPluginModelRuntimeLocked(ctx)
+}
+
+func (s *Service) refreshPluginModelCatalog(ctx context.Context, id string) (string, error) {
+	if s == nil {
+		return "", fmt.Errorf("plugin model runtime is unavailable")
+	}
+	s.pluginModelSyncMu.Lock()
+	defer s.pluginModelSyncMu.Unlock()
+	if err := s.refreshPluginModelRuntimeLocked(ctx); err != nil {
+		return "", err
+	}
+	return s.pluginHost.ModelCatalogRevision(id), nil
+}
+
+func (s *Service) refreshPluginModelRuntimeLocked(ctx context.Context) error {
 	if s == nil || s.pluginHost == nil || s.coreManager == nil {
-		return
+		return fmt.Errorf("plugin model runtime is unavailable")
 	}
 	if ctx == nil {
 		ctx = context.Background()
 	}
-	s.pluginHost.RegisterModels(ctx, registry.GetGlobalRegistry())
+	if !s.pluginHost.RegisterModels(ctx, registry.GetGlobalRegistry()) {
+		return fmt.Errorf("plugin model catalog could not be registered")
+	}
 	if ctx.Err() != nil {
-		return
+		return ctx.Err()
 	}
 	s.cfgMu.RLock()
 	homeEnabled := s.cfg != nil && s.cfg.Home.Enabled
@@ -159,9 +187,10 @@ func (s *Service) syncPluginModelRuntime(ctx context.Context) {
 	})
 	s.refreshPluginModelRegistrations(ctx)
 	if ctx.Err() != nil {
-		return
+		return ctx.Err()
 	}
 	s.coreManager.RefreshSchedulerAll()
+	return nil
 }
 
 func (s *Service) refreshPluginModelRegistrations(ctx context.Context) {

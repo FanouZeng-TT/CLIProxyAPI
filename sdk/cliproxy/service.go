@@ -104,7 +104,8 @@ type Service struct {
 	cooldownStateStore coreauth.CooldownStateStore
 
 	// pluginHost owns dynamic plugin lifecycle and runtime capability adapters.
-	pluginHost *pluginhost.Host
+	pluginHost        *pluginhost.Host
+	pluginModelSyncMu sync.Mutex
 
 	// shutdownOnce ensures shutdown is called only once.
 	shutdownOnce sync.Once

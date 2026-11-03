@@ -294,6 +294,9 @@ func (b *Builder) Build() (*Service, error) {
 		serverOptions:       append([]api.ServerOption(nil), b.serverOptions...),
 	}
 	service.proxyPoolPublisher = helps.RegisterProxyPoolPublisher()
+	if pluginHost != nil {
+		pluginHost.SetModelCatalogRefresh(service.refreshPluginModelCatalog)
+	}
 	helps.AdvanceProxyPoolGeneration(service.proxyPoolPublisher, service.cfg)
 	if b.postAuthHook != nil {
 		service.serverOptions = append(service.serverOptions, api.WithPostAuthHook(b.postAuthHook))

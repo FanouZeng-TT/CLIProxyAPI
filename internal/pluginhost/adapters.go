@@ -239,9 +239,9 @@ func normalizeModelRegistrationResponse(resp pluginapi.ModelRegistrationResponse
 
 // RegisterModels collects static catalogs for executor and per-auth registration.
 // Catalog-only plugins must not advertise availability independently of credentials.
-func (h *Host) RegisterModels(ctx context.Context, modelRegistry modelRegistry) {
+func (h *Host) RegisterModels(ctx context.Context, modelRegistry modelRegistry) bool {
 	if h == nil || modelRegistry == nil {
-		return
+		return false
 	}
 
 	snap := h.Snapshot()
@@ -250,6 +250,7 @@ func (h *Host) RegisterModels(ctx context.Context, modelRegistry modelRegistry) 
 	nextProviderSets := make(map[string][]string)
 	nextModelRegistrations := make(map[string]pluginModelRegistration)
 	nextPluginModelRegistrations := make(map[string][]pluginModelRegistration)
+	nextRevisions := make(map[string]string)
 	for _, record := range records {
 		modelProvider := record.plugin.Capabilities.ModelProvider
 		registrar := record.plugin.Capabilities.ModelRegistrar
@@ -264,6 +265,7 @@ func (h *Host) RegisterModels(ctx context.Context, modelRegistry modelRegistry) 
 		if modelProvider != nil {
 			modelResp, errStaticModels := h.callModelProviderStaticModels(ctx, record, modelProvider)
 			errRegisterModels = errStaticModels
+			nextRevisions[record.id] = modelResp.CatalogRevision
 			resp = pluginapi.ModelRegistrationResponse{
 				Provider:      modelResp.Provider,
 				Models:        modelResp.Models,
@@ -274,7 +276,8 @@ func (h *Host) RegisterModels(ctx context.Context, modelRegistry modelRegistry) 
 		}
 		if errRegisterModels != nil {
 			log.Warnf("pluginhost: model registrar %s failed: %v", record.id, errRegisterModels)
-			continue
+			// Keep the complete previous snapshot when any catalog cannot be read.
+			return false
 		}
 
 		entries := normalizeModelRegistrationResponse(resp)
@@ -331,13 +334,15 @@ func (h *Host) RegisterModels(ctx context.Context, modelRegistry modelRegistry) 
 	}
 	h.mu.Lock()
 	defer h.mu.Unlock()
-	if h.Snapshot() != snap {
-		return
+	if h.Snapshot() != snap || (ctx != nil && ctx.Err() != nil) {
+		return false
 	}
 	h.modelProviders = nextProviders
 	h.modelProviderSets = nextProviderSets
 	h.modelRegistrations = nextModelRegistrations
 	h.pluginModelRegistrations = nextPluginModelRegistrations
+	h.modelCatalogRevisions = nextRevisions
+	return ctx == nil || ctx.Err() == nil
 }
 
 // HasAuthModelProvider reports whether an active plugin declares per-auth model
@@ -539,6 +544,7 @@ func (h *Host) callModelProviderStaticModels(ctx context.Context, record capabil
 		}
 	}()
 	return provider.StaticModels(ctx, pluginapi.StaticModelRequest{
+		ModelCatalogRefresh: h.supportsModelCatalogRefresh(),
 		Plugin:              record.meta,
 		Host:                h.hostConfigSummary(),
 		MultiProviderModels: true,

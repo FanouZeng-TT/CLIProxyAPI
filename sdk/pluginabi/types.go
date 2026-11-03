@@ -147,6 +147,7 @@ const (
 	MethodHostAuthGetRuntime     = "host.auth.get_runtime"
 	MethodHostAuthSave           = "host.auth.save"
 	MethodHostAuthModels         = "host.auth.models"
+	MethodHostModelsRefresh      = "host.models.refresh"
 	MethodHostAffinityLookup     = "host.affinity.lookup"
 
 	MethodHostRoutingResetCooldown = "host.routing.reset_cooldown"

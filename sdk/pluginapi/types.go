@@ -490,6 +490,8 @@ type ModelProvider interface {
 
 // StaticModelRequest carries host context for provider static models.
 type StaticModelRequest struct {
+	// ModelCatalogRefresh reports support for host.models.refresh acknowledgements.
+	ModelCatalogRefresh bool `json:"model_catalog_refresh,omitempty"`
 	// Plugin is the metadata of the plugin being registered.
 	Plugin Metadata
 	// Host contains relevant host configuration.
@@ -520,6 +522,8 @@ type AuthModelRequest struct {
 
 // ModelResponse returns provider and model metadata discovered by a plugin.
 type ModelResponse struct {
+	// CatalogRevision identifies the static snapshot returned by this call.
+	CatalogRevision string `json:"catalog_revision,omitempty"`
 	// Provider is the provider key associated with the returned models.
 	Provider string
 	// Models is the complete set of discovered provider models.
