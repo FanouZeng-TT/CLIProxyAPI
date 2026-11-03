@@ -471,3 +471,48 @@ func TestSanitizePluginRequestScheduler(t *testing.T) {
 		t.Fatalf("scheduler candidate metadata drop survived sanitize: %#v", gotCandidate.Metadata)
 	}
 }
+
+func TestRPCCapabilitiesIncludeExecutorApplyPatch(t *testing.T) {
+	plugin := validTestPlugin("apply-patch")
+	plugin.Capabilities.ExecutorApplyPatch = true
+	plugin.Capabilities.ExecutorApplyPatchModels = []string{"llmbox_"}
+
+	caps := rpcCapabilitiesFromPlugin(plugin)
+	if !caps.ExecutorApplyPatch {
+		t.Fatal("ExecutorApplyPatch = false, want true")
+	}
+
+	raw, errMarshal := json.Marshal(caps)
+	if errMarshal != nil {
+		t.Fatalf("Marshal() error = %v", errMarshal)
+	}
+	var decoded map[string]any
+	if errUnmarshal := json.Unmarshal(raw, &decoded); errUnmarshal != nil {
+		t.Fatalf("Unmarshal() error = %v", errUnmarshal)
+	}
+	if decoded["executor_apply_patch"] != true {
+		t.Fatalf("executor_apply_patch = %#v, want true", decoded["executor_apply_patch"])
+	}
+	models, okModels := decoded["executor_apply_patch_models"].([]any)
+	if !okModels || len(models) != 1 || models[0] != "llmbox_" {
+		t.Fatalf("executor_apply_patch_models = %#v, want [llmbox_]", decoded["executor_apply_patch_models"])
+	}
+}
+
+func TestRegisterRPCPluginPreservesExecutorApplyPatch(t *testing.T) {
+	plugin := validTestPlugin("apply-patch-register")
+	plugin.Capabilities.ExecutorApplyPatch = true
+	plugin.Capabilities.ExecutorApplyPatchModels = []string{"llmbox_"}
+	lookup := newTestSymbolLookup(&testPlugin{registerResult: plugin})
+
+	registered, errRegister := registerRPCPlugin(context.Background(), nil, "apply-patch-register", lookup, pluginabi.MethodPluginRegister, nil)
+	if errRegister != nil {
+		t.Fatalf("registerRPCPlugin() error = %v", errRegister)
+	}
+	if !registered.Capabilities.ExecutorApplyPatch {
+		t.Fatal("registered ExecutorApplyPatch = false, want true")
+	}
+	if len(registered.Capabilities.ExecutorApplyPatchModels) != 1 || registered.Capabilities.ExecutorApplyPatchModels[0] != "llmbox_" {
+		t.Fatalf("registered ExecutorApplyPatchModels = %#v, want [llmbox_]", registered.Capabilities.ExecutorApplyPatchModels)
+	}
+}

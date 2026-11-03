@@ -3592,8 +3592,28 @@ func TestModelsWithClientVersionHomeApplyPatchRouting(t *testing.T) {
 	request.Header.Set("Authorization", "Bearer test-key")
 	recorder := httptest.NewRecorder()
 	engine.ServeHTTP(recorder, request)
-	if recorder.Code != http.StatusOK || !strings.Contains(recorder.Body.String(), `"object":"list"`) || strings.Contains(recorder.Body.String(), "apply_patch_tool_type") {
+	if recorder.Code != http.StatusOK || !strings.Contains(recorder.Body.String(), `"object":"list"`) {
 		t.Fatalf("ordinary Home catalog changed: %s", recorder.Body.String())
+	}
+	var ordinary struct {
+		Data []map[string]any `json:"data"`
+	}
+	if errUnmarshal := json.Unmarshal(recorder.Body.Bytes(), &ordinary); errUnmarshal != nil {
+		t.Fatalf("decode ordinary Home catalog: %v", errUnmarshal)
+	}
+	capabilities := make(map[string]any, len(ordinary.Data))
+	for _, entry := range ordinary.Data {
+		capabilities[entry["id"].(string)] = entry["apply_patch_tool_type"]
+	}
+	for _, id := range []string{"gpt-5.5", "gpt-reserve", "home-patch-supported", "home-patch-mixed", "team/gpt-5.5"} {
+		if value, present := capabilities[id]; !present || value != "freeform" {
+			t.Errorf("ordinary %s apply_patch_tool_type = %#v (present %v), want freeform", id, value, present)
+		}
+	}
+	for _, id := range []string{"home-patch-local-only", "home-patch-partial"} {
+		if value, present := capabilities[id]; present && value != nil {
+			t.Errorf("ordinary %s apply_patch_tool_type = %#v, want absent or null", id, value)
+		}
 	}
 }
 
@@ -3720,7 +3740,24 @@ func TestModelsWithClientVersionApplyPatchRequiresExecutor(t *testing.T) {
 	request.Header.Set("Authorization", "Bearer test-key")
 	recorder := httptest.NewRecorder()
 	server.engine.ServeHTTP(recorder, request)
-	if recorder.Code != http.StatusOK || !strings.Contains(recorder.Body.String(), `"object":"list"`) || strings.Contains(recorder.Body.String(), "apply_patch_tool_type") {
+	if recorder.Code != http.StatusOK || !strings.Contains(recorder.Body.String(), `"object":"list"`) {
 		t.Fatalf("ordinary local catalog changed: %s", recorder.Body.String())
+	}
+	var ordinary struct {
+		Data []map[string]any `json:"data"`
+	}
+	if errUnmarshal := json.Unmarshal(recorder.Body.Bytes(), &ordinary); errUnmarshal != nil {
+		t.Fatalf("decode ordinary local catalog: %v", errUnmarshal)
+	}
+	for _, entry := range ordinary.Data {
+		id, _ := entry["id"].(string)
+		value, present := entry["apply_patch_tool_type"]
+		if id == "gpt-5.5" || id == "http-patch-synthetic" {
+			if !present || value != "freeform" {
+				t.Errorf("ordinary %s apply_patch_tool_type = %#v (present %v), want freeform", id, value, present)
+			}
+		} else if present && value != nil {
+			t.Errorf("ordinary %s apply_patch_tool_type = %#v, want absent or null", id, value)
+		}
 	}
 }

@@ -415,3 +415,40 @@ func TestCodexClientModelsApplyPatchRouting(t *testing.T) {
 	assertPatch(t, withoutManager.codexClientModelsResponse("0.153.4"), "catalog-patch-synthetic", nil)
 
 }
+
+func TestApplyApplyPatchCapabilitiesOnPublicModels(t *testing.T) {
+	modelRegistry := registry.GetGlobalRegistry()
+	clientID := "public-patch-capability-test"
+	modelRegistry.RegisterClient(clientID, "public-patch-provider", []*registry.ModelInfo{
+		{ID: "public-patch-model"},
+		{ID: "gpt-image-2"},
+	})
+	t.Cleanup(func() { modelRegistry.UnregisterClient(clientID) })
+
+	manager := auth.NewManager(nil, nil, nil)
+	manager.RegisterExecutor(executor.NewOpenAICompatExecutor("public-patch-provider", &config.Config{}))
+	cfg := &config.SDKConfig{Client: config.ClientConfig{Codex: config.CodexClientConfig{EnableApplyPatch: true}}}
+	handler := NewOpenAIAPIHandler(handlers.NewBaseAPIHandlers(cfg, manager))
+
+	models := []map[string]any{
+		{"id": "public-patch-model", "object": "model"},
+		{"id": "gpt-image-2", "object": "model"},
+		{"id": "unknown-model", "object": "model"},
+	}
+	handler.applyApplyPatchCapabilities(models)
+	if got := models[0]["apply_patch_tool_type"]; got != "freeform" {
+		t.Fatalf("public-patch-model apply_patch_tool_type = %#v, want freeform", got)
+	}
+	for _, model := range models[1:] {
+		if _, present := model["apply_patch_tool_type"]; present {
+			t.Fatalf("%v must not advertise apply_patch", model["id"])
+		}
+	}
+
+	cfg.Client.Codex.EnableApplyPatch = false
+	results := []map[string]any{{"id": "public-patch-model", "object": "model"}}
+	handler.applyApplyPatchCapabilities(results)
+	if value, present := results[0]["apply_patch_tool_type"]; present {
+		t.Fatalf("disabled config must not advertise apply_patch: %v", value)
+	}
+}

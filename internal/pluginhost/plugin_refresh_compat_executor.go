@@ -168,3 +168,15 @@ func (e *pluginRefreshCompatExecutor) SupportsApplyPatch() bool {
 	support, okSupport := e.inner.(coreauth.ApplyPatchSupport)
 	return okSupport && support.SupportsApplyPatch()
 }
+
+// SupportsApplyPatchForModel delegates the optional per-model narrowing.
+func (e *pluginRefreshCompatExecutor) SupportsApplyPatchForModel(model string) bool {
+	if e == nil || e.inner == nil {
+		return false
+	}
+	if support, okSupport := e.inner.(coreauth.ApplyPatchModelSupport); okSupport {
+		return support.SupportsApplyPatchForModel(model)
+	}
+	support, okSupport := e.inner.(coreauth.ApplyPatchSupport)
+	return okSupport && support.SupportsApplyPatch()
+}

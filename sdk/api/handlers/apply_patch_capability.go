@@ -9,5 +9,5 @@ func (h *BaseAPIHandler) SupportsApplyPatchModel(model string) bool {
 	if errGetRequestDetails != nil {
 		return false
 	}
-	return h.AuthManager.SupportsApplyPatchForProviders(providers)
+	return h.AuthManager.SupportsApplyPatchForModel(providers, model)
 }

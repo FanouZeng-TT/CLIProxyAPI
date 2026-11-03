@@ -12,6 +12,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strings"
 	"sync"
 
 	"github.com/gin-gonic/gin"
@@ -84,6 +85,7 @@ func (h *OpenAIAPIHandler) OpenAIModels(c *gin.Context) {
 	// Keep standard OpenAI fields plus optional presentation metadata. Clients that
 	// understand display_name can show dynamic plugin status; strict clients ignore it.
 	filteredModels := filterOpenAIModels(allModels)
+	h.applyApplyPatchCapabilities(filteredModels)
 
 	h.WriteModelListResponse(c, h.HandlerType(), gin.H{
 		"object": "list",
@@ -884,4 +886,27 @@ func (h *OpenAIAPIHandler) handleStreamResult(c *gin.Context, flusher http.Flush
 			_, _ = fmt.Fprint(c.Writer, "data: [DONE]\n\n")
 		},
 	})
+}
+
+// applyApplyPatchCapabilities advertises the freeform patch tool on the public
+// model list so local clients that build their own Codex catalog can register
+// the tool. Unknown or non-text models keep the field absent.
+func (h *OpenAIAPIHandler) applyApplyPatchCapabilities(models []map[string]any) {
+	if h == nil || len(models) == 0 {
+		return
+	}
+	cfg := h.CurrentConfig()
+	if cfg == nil || !cfg.Client.Codex.EnableApplyPatch {
+		return
+	}
+	for _, model := range models {
+		id, _ := model["id"].(string)
+		id = strings.TrimSpace(id)
+		if id == "" || codexmodels.IsNonChatModel(id) {
+			continue
+		}
+		if h.SupportsApplyPatchModel(id) {
+			model["apply_patch_tool_type"] = "freeform"
+		}
+	}
 }

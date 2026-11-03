@@ -4254,3 +4254,70 @@ func TestExecutorAdapterRefresh_MergesAttributesAndPreservesPath_Issue6119(t *te
 		t.Errorf("refreshed priority attribute = %q, want 2", got)
 	}
 }
+
+func TestExecutorAdapterAdvertisesApplyPatchOnlyWhenDeclared(t *testing.T) {
+	host := New()
+	for _, tc := range []struct {
+		name     string
+		declared bool
+		want     bool
+	}{
+		{name: "declared", declared: true, want: true},
+		{name: "default", declared: false, want: false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			record := normalizeTestCapabilityRecord(capabilityRecord{
+				id: "apply-patch-plugin",
+				plugin: pluginapi.Plugin{Capabilities: pluginapi.Capabilities{
+					ExecutorApplyPatch: tc.declared,
+				}},
+			})
+			registration := newExecutorAdapterRegistration(host, record, "plugin-provider", &fakeExecutor{identifier: "plugin-provider"})
+			if registration.adapter == nil {
+				t.Fatal("adapter = nil")
+			}
+			if got := registration.adapter.SupportsApplyPatch(); got != tc.want {
+				t.Fatalf("SupportsApplyPatch() = %v, want %v", got, tc.want)
+			}
+		})
+	}
+
+	var nilAdapter *executorAdapter
+	if nilAdapter.SupportsApplyPatch() {
+		t.Fatal("nil adapter SupportsApplyPatch() = true, want false")
+	}
+}
+
+func TestExecutorAdapterApplyPatchModelPrefixes(t *testing.T) {
+	host := New()
+	record := normalizeTestCapabilityRecord(capabilityRecord{
+		id: "apply-patch-plugin",
+		plugin: pluginapi.Plugin{Capabilities: pluginapi.Capabilities{
+			ExecutorApplyPatch:       true,
+			ExecutorApplyPatchModels: []string{"llmbox_"},
+		}},
+	})
+	registration := newExecutorAdapterRegistration(host, record, "plugin-provider", &fakeExecutor{identifier: "plugin-provider"})
+	adapter := registration.adapter
+	if adapter == nil {
+		t.Fatal("adapter = nil")
+	}
+	if !adapter.SupportsApplyPatch() {
+		t.Fatal("SupportsApplyPatch() = false, want true")
+	}
+	for _, model := range []string{"llmbox_deepseek-v4.1-flash", " llmbox_gpt-5.6-terra "} {
+		if !adapter.SupportsApplyPatchForModel(model) {
+			t.Fatalf("SupportsApplyPatchForModel(%q) = false, want true", model)
+		}
+	}
+	for _, model := range []string{"trae_gpt-5.6-sol", "gpt-5.6-terra", "", "trae_llmbox_x"} {
+		if adapter.SupportsApplyPatchForModel(model) {
+			t.Fatalf("SupportsApplyPatchForModel(%q) = true, want false", model)
+		}
+	}
+
+	var nilAdapter *executorAdapter
+	if nilAdapter.SupportsApplyPatchForModel("llmbox_x") {
+		t.Fatal("nil adapter SupportsApplyPatchForModel() = true, want false")
+	}
+}

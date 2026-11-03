@@ -90,6 +90,8 @@ func registerRPCPlugin(ctx context.Context, host *Host, id string, client plugin
 			ExecutorModelScope:            resp.Capabilities.ExecutorModelScope,
 			ExecutorInputFormats:          append([]string(nil), resp.Capabilities.ExecutorInputFormats...),
 			ExecutorOutputFormats:         append([]string(nil), resp.Capabilities.ExecutorOutputFormats...),
+			ExecutorApplyPatch:            resp.Capabilities.ExecutorApplyPatch,
+			ExecutorApplyPatchModels:      append([]string(nil), resp.Capabilities.ExecutorApplyPatchModels...),
 		},
 	}
 	if resp.Capabilities.ModelRegistrar {
