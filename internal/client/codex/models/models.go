@@ -747,6 +747,12 @@ func applyCodexClientVisibilityOverride(entry map[string]any, id string) {
 	}
 }
 
+// IsNonChatModel reports image, video, and speech catalog IDs that must not
+// advertise conversation tools on public model listings.
+func IsNonChatModel(id string) bool {
+	return isCodexClientImageOrVideoModel(id)
+}
+
 // isCodexClientImageOrVideoModel reports catalog IDs that are not chat models.
 // Speech IDs are included so the Codex client does not offer them as text models.
 func isCodexClientImageOrVideoModel(id string) bool {

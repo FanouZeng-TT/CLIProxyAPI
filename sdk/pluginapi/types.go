@@ -111,6 +111,13 @@ type Capabilities struct {
 	ExecutorInputFormats []string
 	// ExecutorOutputFormats lists response protocols emitted directly by Executor. Executors must declare at least one.
 	ExecutorOutputFormats []string
+	// ExecutorApplyPatch reports that Executor preserves the freeform apply_patch
+	// tool contract across every declared input/output format, so the host may
+	// advertise it for this executor's models.
+	ExecutorApplyPatch bool
+	// ExecutorApplyPatchModels limits ExecutorApplyPatch to models with these ID
+	// prefixes. Empty means every model served by the executor.
+	ExecutorApplyPatchModels []string
 	// RequestTranslator converts canonical requests into provider-specific payloads.
 	RequestTranslator RequestTranslator
 	// RequestNormalizer converts provider-specific requests into canonical payloads.

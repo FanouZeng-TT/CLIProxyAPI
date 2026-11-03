@@ -34,6 +34,8 @@ type rpcCapabilities struct {
 	ExecutorModelScope                pluginapi.ExecutorModelScope `json:"executor_model_scope"`
 	ExecutorInputFormats              []string                     `json:"executor_input_formats,omitempty"`
 	ExecutorOutputFormats             []string                     `json:"executor_output_formats,omitempty"`
+	ExecutorApplyPatch                bool                         `json:"executor_apply_patch,omitempty"`
+	ExecutorApplyPatchModels          []string                     `json:"executor_apply_patch_models,omitempty"`
 	RequestTranslator                 bool                         `json:"request_translator"`
 	RequestNormalizer                 bool                         `json:"request_normalizer"`
 	RequestInterceptor                bool                         `json:"request_interceptor"`
@@ -246,6 +248,8 @@ func rpcCapabilitiesFromPlugin(plugin pluginapi.Plugin) rpcCapabilities {
 		ExecutorModelScope:                normalizedExecutorModelScope(caps),
 		ExecutorInputFormats:              append([]string(nil), caps.ExecutorInputFormats...),
 		ExecutorOutputFormats:             append([]string(nil), caps.ExecutorOutputFormats...),
+		ExecutorApplyPatch:                caps.ExecutorApplyPatch,
+		ExecutorApplyPatchModels:          append([]string(nil), caps.ExecutorApplyPatchModels...),
 		RequestTranslator:                 caps.RequestTranslator != nil,
 		RequestNormalizer:                 caps.RequestNormalizer != nil,
 		RequestInterceptor:                caps.RequestInterceptor != nil,

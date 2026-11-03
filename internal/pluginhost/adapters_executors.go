@@ -229,14 +229,16 @@ func newExecutorAdapterRegistration(h *Host, record capabilityRecord, provider s
 	return executorRegistration{
 		provider: provider,
 		adapter: &executorAdapter{
-			host:          h,
-			pluginID:      record.id,
-			path:          record.path,
-			version:       record.version,
-			provider:      provider,
-			executor:      executor,
-			inputFormats:  normalizeExecutorFormats(record.plugin.Capabilities.ExecutorInputFormats),
-			outputFormats: normalizeExecutorFormats(record.plugin.Capabilities.ExecutorOutputFormats),
+			host:             h,
+			pluginID:         record.id,
+			path:             record.path,
+			version:          record.version,
+			provider:         provider,
+			executor:         executor,
+			inputFormats:     normalizeExecutorFormats(record.plugin.Capabilities.ExecutorInputFormats),
+			outputFormats:    normalizeExecutorFormats(record.plugin.Capabilities.ExecutorOutputFormats),
+			applyPatch:       record.plugin.Capabilities.ExecutorApplyPatch,
+			applyPatchModels: append([]string(nil), record.plugin.Capabilities.ExecutorApplyPatchModels...),
 		},
 	}
 }
@@ -486,14 +488,16 @@ func (h *Host) modelProvidersForPlugin(pluginID string) []string {
 }
 
 type executorAdapter struct {
-	host          *Host
-	pluginID      string
-	path          string
-	version       string
-	provider      string
-	executor      pluginapi.ProviderExecutor
-	inputFormats  []sdktranslator.Format
-	outputFormats []sdktranslator.Format
+	host             *Host
+	pluginID         string
+	path             string
+	version          string
+	provider         string
+	executor         pluginapi.ProviderExecutor
+	inputFormats     []sdktranslator.Format
+	outputFormats    []sdktranslator.Format
+	applyPatch       bool
+	applyPatchModels []string
 }
 
 func (a *executorAdapter) Identifier() string {
@@ -501,6 +505,30 @@ func (a *executorAdapter) Identifier() string {
 		return ""
 	}
 	return a.provider
+}
+
+// SupportsApplyPatch advertises the plugin's declared freeform apply_patch contract.
+// It is false unless the plugin opts in, so existing plugins keep the old behavior.
+func (a *executorAdapter) SupportsApplyPatch() bool {
+	return a != nil && a.applyPatch
+}
+
+// SupportsApplyPatchForModel narrows the capability to the declared model prefixes.
+func (a *executorAdapter) SupportsApplyPatchForModel(model string) bool {
+	if a == nil || !a.applyPatch {
+		return false
+	}
+	if len(a.applyPatchModels) == 0 {
+		return true
+	}
+	model = strings.TrimSpace(model)
+	for _, prefix := range a.applyPatchModels {
+		prefix = strings.TrimSpace(prefix)
+		if prefix != "" && strings.HasPrefix(model, prefix) {
+			return true
+		}
+	}
+	return false
 }
 
 type preparedExecutorCall struct {

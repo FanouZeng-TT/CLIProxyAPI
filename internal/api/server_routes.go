@@ -755,7 +755,7 @@ func (s *Server) handleHomeCodexClientModels(c *gin.Context, clientVersion strin
 func homeApplyPatchCapabilityForModel(entries []homeModelEntry, manager *auth.Manager) codexmodels.ApplyPatchCapabilityForModelFunc {
 	providersForModel := homeProvidersForModel(entries)
 	return func(id string) bool {
-		return manager.SupportsApplyPatchForProviders(providersForModel(id))
+		return manager.SupportsApplyPatchForModel(providersForModel(id), id)
 	}
 }
 
@@ -928,6 +928,14 @@ func (s *Server) handleHomeModels(c *gin.Context) {
 		return
 	}
 
+	var applyPatchCapabilityForModel codexmodels.ApplyPatchCapabilityForModelFunc
+	if cfg := s.getConfig(); cfg != nil && cfg.Client.Codex.EnableApplyPatch {
+		var manager *auth.Manager
+		if s.handlers != nil {
+			manager = s.handlers.AuthManager
+		}
+		applyPatchCapabilityForModel = homeApplyPatchCapabilityForModel(entries, manager)
+	}
 	filtered := make([]map[string]any, 0, len(entries))
 	for _, entry := range entries {
 		model := map[string]any{
@@ -939,6 +947,9 @@ func (s *Server) handleHomeModels(c *gin.Context) {
 		}
 		if entry.ownedBy != "" {
 			model["owned_by"] = entry.ownedBy
+		}
+		if applyPatchCapabilityForModel != nil && !codexmodels.IsNonChatModel(entry.id) && applyPatchCapabilityForModel(entry.id) {
+			model["apply_patch_tool_type"] = "freeform"
 		}
 		filtered = append(filtered, model)
 	}
